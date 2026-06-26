@@ -75,6 +75,30 @@ describe("daily intelligence dashboard", () => {
     expect(getMatchedTopicIds(items[0], topics)).toEqual(["openai", "agents"]);
   });
 
+  it("normalizes topic keywords without empty or short-word false positives", () => {
+    const item: NormalizedItem = {
+      id: "topic-normalization",
+      title: "Supply chain update references OpenAI",
+      summary: "A relevant product note appears in today's logistics brief.",
+      sourceId: "global-wire",
+      sourceUrl: "https://example.com/topic-normalization",
+      publishedAt: "2026-06-27T06:00:00+08:00",
+      updatedAt: "2026-06-27T06:30:00+08:00",
+      tags: [" Markets "],
+      topicKeywords: [" OPENAI "],
+      importance: 3,
+      status: "new",
+    };
+    const normalizationTopics: Topic[] = [
+      { id: "empty", name: "Empty", keywords: ["  "], enabled: true },
+      { id: "short-ai", name: "Short AI", keywords: ["ai"], enabled: true },
+      { id: "openai", name: "OpenAI", keywords: [" OPENAI "], enabled: true },
+      { id: "disabled", name: "Disabled Supply", keywords: ["supply"], enabled: false },
+    ];
+
+    expect(getMatchedTopicIds(item, normalizationTopics)).toEqual(["openai"]);
+  });
+
   it("groups items into ongoing, today, week, and watchlist sections", () => {
     const snapshot = buildDashboardSnapshot(items, sources, topics, now);
 
@@ -87,5 +111,26 @@ describe("daily intelligence dashboard", () => {
     expect(snapshot.topics).toEqual(topics);
     expect(snapshot.brief).toContain("1 ongoing");
     expect(snapshot.brief).toContain("3 today");
+  });
+
+  it("preserves unknown source ids and matches trimmed watch tags", () => {
+    const unknownSourceItem: NormalizedItem = {
+      id: "unknown-security-watch",
+      title: "Security update from a new source",
+      summary: "A new item arrives before the source registry is updated.",
+      sourceId: "field-report",
+      sourceUrl: "https://example.com/field-report/security",
+      publishedAt: "2026-06-27T06:00:00+08:00",
+      updatedAt: "2026-06-27T06:30:00+08:00",
+      tags: [" Security "],
+      topicKeywords: [],
+      importance: 4,
+      status: "new",
+    };
+
+    const snapshot = buildDashboardSnapshot([unknownSourceItem], sources, topics, now);
+
+    expect(snapshot.sections.today[0].source.id).toBe("field-report");
+    expect(snapshot.sections.watchlist.map((item) => item.id)).toEqual(["unknown-security-watch"]);
   });
 });

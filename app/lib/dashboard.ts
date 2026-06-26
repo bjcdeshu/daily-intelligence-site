@@ -20,14 +20,6 @@ export const WATCH_TAGS = new Set([
   "policy",
 ]);
 
-const FALLBACK_SOURCE: SourceConfig = {
-  id: "unknown",
-  name: "Unknown source",
-  category: "general-news",
-  url: "#",
-  priority: 0,
-};
-
 export function getMatchedTopicIds(item: NormalizedItem, topics: Topic[]): string[] {
   const haystack = [
     item.title,
@@ -36,14 +28,14 @@ export function getMatchedTopicIds(item: NormalizedItem, topics: Topic[]): strin
     ...item.topicKeywords,
   ]
     .join(" ")
-    .toLocaleLowerCase();
+    .toLocaleLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
 
   return topics
     .filter((topic) => topic.enabled)
     .filter((topic) =>
-      topic.keywords.some((keyword) =>
-        haystack.includes(keyword.toLocaleLowerCase()),
-      ),
+      topic.keywords.some((keyword) => keywordMatches(haystack, keyword)),
     )
     .map((topic) => topic.id);
 }
@@ -72,7 +64,7 @@ export function buildDashboardSnapshot(
 
     const dashboardItem: DashboardItem = {
       ...item,
-      source: sourceById.get(item.sourceId) ?? FALLBACK_SOURCE,
+      source: sourceById.get(item.sourceId) ?? createFallbackSource(item),
       matchedTopicIds: getMatchedTopicIds(item, topics),
     };
     const activityAt = new Date(item.updatedAt || item.publishedAt);
@@ -137,11 +129,53 @@ function isWatchItem(item: NormalizedItem): boolean {
     return true;
   }
 
-  return item.tags.some((tag) =>
-    WATCH_TAGS.has(tag.toLocaleLowerCase()),
+  return [...item.tags, ...item.topicKeywords].some((tag) =>
+    WATCH_TAGS.has(normalizeText(tag)),
   );
 }
 
 function getLatestActivityTime(item: NormalizedItem): number {
   return new Date(item.updatedAt || item.publishedAt).getTime();
+}
+
+function createFallbackSource(item: NormalizedItem): SourceConfig {
+  return {
+    id: item.sourceId,
+    name: item.sourceId,
+    category: "general-news",
+    url: item.sourceUrl,
+    priority: 0,
+  };
+}
+
+function keywordMatches(haystack: string, rawKeyword: string): boolean {
+  const keyword = normalizeText(rawKeyword);
+
+  if (!keyword) {
+    return false;
+  }
+
+  if (!isAscii(keyword)) {
+    return haystack.includes(keyword);
+  }
+
+  const pattern = keyword
+    .split(" ")
+    .map(escapeRegExp)
+    .join("\\s+");
+  const boundaryPattern = `(^|[^a-z0-9])${pattern}($|[^a-z0-9])`;
+
+  return new RegExp(boundaryPattern, "i").test(haystack);
+}
+
+function normalizeText(value: string): string {
+  return value.toLocaleLowerCase().trim().replace(/\s+/g, " ");
+}
+
+function isAscii(value: string): boolean {
+  return /^[\x00-\x7F]+$/.test(value);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
