@@ -1,0 +1,173 @@
+import type { NormalizedItem, SourceConfig, Topic } from "./types";
+
+export const seedSources: SourceConfig[] = [
+  {
+    id: "reuters",
+    name: "Reuters",
+    category: "general-news",
+    url: "https://www.reuters.com/",
+    priority: 5,
+  },
+  {
+    id: "the-verge",
+    name: "The Verge",
+    category: "tech-news",
+    url: "https://www.theverge.com/",
+    priority: 4,
+  },
+  {
+    id: "openai",
+    name: "OpenAI Blog",
+    category: "ai-lab",
+    url: "https://openai.com/news/",
+    priority: 5,
+  },
+  {
+    id: "anthropic",
+    name: "Anthropic News",
+    category: "ai-lab",
+    url: "https://www.anthropic.com/news",
+    priority: 5,
+  },
+  {
+    id: "arxiv",
+    name: "arXiv",
+    category: "research",
+    url: "https://arxiv.org/",
+    priority: 3,
+  },
+  {
+    id: "github-trending",
+    name: "GitHub Trending",
+    category: "developer",
+    url: "https://github.com/trending",
+    priority: 3,
+  },
+];
+
+export const defaultTopics: Topic[] = [
+  {
+    id: "ai-agents",
+    name: "AI Agents",
+    keywords: ["agent", "agents", "computer use", "browser"],
+    enabled: true,
+  },
+  {
+    id: "openai",
+    name: "OpenAI",
+    keywords: ["openai", "chatgpt", "gpt"],
+    enabled: true,
+  },
+  {
+    id: "chips",
+    name: "Chips",
+    keywords: ["chip", "chips", "semiconductor", "gpu"],
+    enabled: true,
+  },
+  {
+    id: "geopolitics",
+    name: "Geopolitics",
+    keywords: ["policy", "export controls", "regulation", "security"],
+    enabled: true,
+  },
+];
+
+export function isoHoursAgo(hours: number, from = new Date()): string {
+  return new Date(from.getTime() - hours * 60 * 60 * 1000).toISOString();
+}
+
+export function createSeedItems(now = new Date()): NormalizedItem[] {
+  return [
+    {
+      id: "agent-browser-rollout",
+      title: "Agent browser rollout expands to more testers",
+      summary: "A staged release brings browser control and agent workflows to a broader preview group.",
+      sourceId: "the-verge",
+      sourceUrl: "https://www.theverge.com/ai-agent-browser-rollout",
+      publishedAt: isoHoursAgo(2, now),
+      updatedAt: isoHoursAgo(1, now),
+      tags: ["AI", "Agents"],
+      topicKeywords: ["AI Agents", "browser"],
+      importance: 5,
+      status: "ongoing",
+    },
+    {
+      id: "chip-supply-policy",
+      title: "Chip supply policy moves back into focus",
+      summary: "New semiconductor policy signals could affect advanced GPU availability and global supply planning.",
+      sourceId: "reuters",
+      sourceUrl: "https://www.reuters.com/technology/chip-supply-policy",
+      publishedAt: isoHoursAgo(9, now),
+      updatedAt: isoHoursAgo(6, now),
+      tags: ["Chips", "Policy"],
+      topicKeywords: ["semiconductor", "geopolitics"],
+      importance: 4,
+      status: "new",
+    },
+    {
+      id: "openai-product-note",
+      title: "OpenAI publishes product note on model updates",
+      summary: "The note highlights reliability improvements and product changes for developers and ChatGPT users.",
+      sourceId: "openai",
+      sourceUrl: "https://openai.com/news/model-product-note",
+      publishedAt: isoHoursAgo(18, now),
+      updatedAt: isoHoursAgo(10, now),
+      tags: ["AI", "Models"],
+      topicKeywords: ["OpenAI", "GPT"],
+      importance: 4,
+      status: "updated",
+    },
+    {
+      id: "anthropic-guidance",
+      title: "Anthropic updates guidance for safer agent deployments",
+      summary: "New operational guidance focuses on tool permissions, monitoring, and staged autonomy.",
+      sourceId: "anthropic",
+      sourceUrl: "https://www.anthropic.com/news/agent-guidance",
+      publishedAt: isoHoursAgo(30, now),
+      updatedAt: isoHoursAgo(24, now),
+      tags: ["AI", "Security"],
+      topicKeywords: ["AI Agents", "policy"],
+      importance: 4,
+      status: "updated",
+    },
+    {
+      id: "multimodal-benchmark",
+      title: "Multimodal benchmark tests model planning under noisy inputs",
+      summary: "A research preprint compares model performance on visual reasoning and long-horizon planning tasks.",
+      sourceId: "arxiv",
+      sourceUrl: "https://arxiv.org/abs/2606.00001",
+      publishedAt: isoHoursAgo(52, now),
+      updatedAt: isoHoursAgo(50, now),
+      tags: ["Research", "Models"],
+      topicKeywords: ["multimodal", "benchmark"],
+      importance: 3,
+      status: "new",
+    },
+    {
+      id: "open-source-coding-agent",
+      title: "Open-source coding agent climbs developer rankings",
+      summary: "A repository for terminal-based code editing agents trends after adding review and test automation.",
+      sourceId: "github-trending",
+      sourceUrl: "https://github.com/trending/coding-agent",
+      publishedAt: isoHoursAgo(70, now),
+      updatedAt: isoHoursAgo(64, now),
+      tags: ["Agents", "Developer"],
+      topicKeywords: ["coding agent", "open source"],
+      importance: 3,
+      status: "updated",
+    },
+    {
+      id: "prompt-injection-watch",
+      title: "Prompt-injection watch expands after new exploit reports",
+      summary: "Security researchers flag fresh examples of indirect prompt injection against connected AI tools.",
+      sourceId: "reuters",
+      sourceUrl: "https://www.reuters.com/technology/prompt-injection-watch",
+      publishedAt: isoHoursAgo(120, now),
+      updatedAt: isoHoursAgo(20, now),
+      tags: ["Security", "AI"],
+      topicKeywords: ["prompt injection", "agents"],
+      importance: 5,
+      status: "ongoing",
+    },
+  ];
+}
