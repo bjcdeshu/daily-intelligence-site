@@ -23,7 +23,7 @@ export const WATCH_TAGS = new Set([
 const FALLBACK_SOURCE: SourceConfig = {
   id: "unknown",
   name: "Unknown source",
-  category: "unknown",
+  category: "general-news",
   url: "#",
   priority: 0,
 };
@@ -75,15 +75,15 @@ export function buildDashboardSnapshot(
       source: sourceById.get(item.sourceId) ?? FALLBACK_SOURCE,
       matchedTopicIds: getMatchedTopicIds(item, topics),
     };
-    const publishedAt = new Date(item.publishedAt);
+    const activityAt = new Date(item.updatedAt || item.publishedAt);
 
     if (item.status === "ongoing") {
       sections.ongoing.push(dashboardItem);
     }
 
-    if (publishedAt >= todayStart && publishedAt < tomorrowStart) {
+    if (activityAt >= todayStart && activityAt < tomorrowStart) {
       sections.today.push(dashboardItem);
-    } else if (publishedAt >= weekStart && publishedAt < todayStart) {
+    } else if (activityAt >= weekStart && activityAt < todayStart) {
       sections.week.push(dashboardItem);
     }
 
@@ -105,6 +105,8 @@ export function buildDashboardSnapshot(
 
   return {
     generatedAt: now.toISOString(),
+    sources,
+    topics,
     sections,
     counts,
     brief: `${counts.ongoing} ongoing, ${counts.today} today, ${counts.week} this week, ${counts.watchlist} on watchlist`,
@@ -116,7 +118,7 @@ function compareDashboardItems(a: DashboardItem, b: DashboardItem): number {
     return b.importance - a.importance;
   }
 
-  return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  return getLatestActivityTime(b) - getLatestActivityTime(a);
 }
 
 function getSingaporeDayStart(date: Date): Date {
@@ -135,11 +137,11 @@ function isWatchItem(item: NormalizedItem): boolean {
     return true;
   }
 
-  if (item.status === "new") {
-    return false;
-  }
-
-  return [...item.tags, ...item.topicKeywords].some((tag) =>
+  return item.tags.some((tag) =>
     WATCH_TAGS.has(tag.toLocaleLowerCase()),
   );
+}
+
+function getLatestActivityTime(item: NormalizedItem): number {
+  return new Date(item.updatedAt || item.publishedAt).getTime();
 }

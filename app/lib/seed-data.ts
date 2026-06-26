@@ -11,7 +11,7 @@ export const seedSources: SourceConfig[] = [
   {
     id: "the-verge",
     name: "The Verge",
-    category: "tech-news",
+    category: "technology",
     url: "https://www.theverge.com/",
     priority: 4,
   },

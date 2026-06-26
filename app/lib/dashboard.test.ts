@@ -43,6 +43,19 @@ const items: NormalizedItem[] = [
     status: "new",
   },
   {
+    id: "updated-today-from-week",
+    title: "Markets digest this week's logistics update",
+    summary: "A regional logistics story first published earlier this week has fresh market impact today.",
+    sourceId: "global-wire",
+    sourceUrl: "https://example.com/markets/logistics",
+    publishedAt: "2026-06-24T11:00:00+08:00",
+    updatedAt: "2026-06-27T07:30:00+08:00",
+    tags: ["Markets", "Logistics"],
+    topicKeywords: ["supply chains"],
+    importance: 2,
+    status: "updated",
+  },
+  {
     id: "week-policy",
     title: "AI policy talks continue this week",
     summary: "Regulators and labs continue a week of policy negotiations.",
@@ -66,11 +79,13 @@ describe("daily intelligence dashboard", () => {
     const snapshot = buildDashboardSnapshot(items, sources, topics, now);
 
     expect(snapshot.sections.ongoing.map((item) => item.id)).toEqual(["ongoing-agent"]);
-    expect(snapshot.sections.today.map((item) => item.id)).toEqual(["ongoing-agent", "today-market"]);
+    expect(snapshot.sections.today.map((item) => item.id)).toEqual(["ongoing-agent", "today-market", "updated-today-from-week"]);
     expect(snapshot.sections.week.map((item) => item.id)).toEqual(["week-policy"]);
-    expect(snapshot.sections.watchlist.map((item) => item.id)).toEqual(["ongoing-agent", "week-policy"]);
-    expect(snapshot.counts).toEqual({ ongoing: 1, today: 2, week: 1, watchlist: 2 });
+    expect(snapshot.sections.watchlist.map((item) => item.id)).toEqual(["ongoing-agent", "today-market", "week-policy"]);
+    expect(snapshot.counts).toEqual({ ongoing: 1, today: 3, week: 1, watchlist: 3 });
+    expect(snapshot.sources).toEqual(sources);
+    expect(snapshot.topics).toEqual(topics);
     expect(snapshot.brief).toContain("1 ongoing");
-    expect(snapshot.brief).toContain("2 today");
+    expect(snapshot.brief).toContain("3 today");
   });
 });

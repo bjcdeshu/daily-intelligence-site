@@ -1,11 +1,9 @@
 export type SourceCategory =
-  | "ai-lab"
   | "general-news"
-  | "tech-news"
+  | "technology"
+  | "ai-lab"
   | "research"
-  | "developer"
-  | "social"
-  | "unknown";
+  | "developer";
 
 export type ItemStatus = "new" | "updated" | "ongoing" | "archived";
 
@@ -35,7 +33,7 @@ export type NormalizedItem = {
   sourceId: string;
   sourceUrl: string;
   publishedAt: string;
-  updatedAt: string;
+  updatedAt?: string;
   tags: string[];
   topicKeywords: string[];
   importance: Importance;
@@ -49,6 +47,8 @@ export type DashboardItem = NormalizedItem & {
 
 export type DashboardSnapshot = {
   generatedAt: string;
+  sources: SourceConfig[];
+  topics: Topic[];
   sections: Record<DashboardSection, DashboardItem[]>;
   counts: Record<DashboardSection, number>;
   brief: string;
