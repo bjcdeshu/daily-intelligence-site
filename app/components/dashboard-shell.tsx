@@ -14,6 +14,7 @@ import {
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ComponentType,
   type FormEvent,
@@ -68,13 +69,25 @@ const sectionConfigs: SectionConfig[] = [
 
 export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
-  const [topics, setTopics] = useState(() => readStoredTopics(initialSnapshot.topics));
+  const [topics, setTopics] = useState(initialSnapshot.topics);
   const [selectedTopicId, setSelectedTopicId] = useState("all");
   const [topicName, setTopicName] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const didLoadStoredTopics = useRef(false);
 
   useEffect(() => {
+    queueMicrotask(() => {
+      setTopics(readStoredTopics(initialSnapshot.topics));
+      didLoadStoredTopics.current = true;
+    });
+  }, [initialSnapshot.topics]);
+
+  useEffect(() => {
+    if (!didLoadStoredTopics.current) {
+      return;
+    }
+
     window.localStorage.setItem(TOPICS_STORAGE_KEY, JSON.stringify(topics));
   }, [topics]);
 
@@ -257,7 +270,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
               className="h-10 min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400"
               value={topicName}
               onChange={(event) => setTopicName(event.target.value)}
-              placeholder="Topic"
+              placeholder="添加主题"
             />
             <button
               className="inline-flex size-10 shrink-0 items-center justify-center rounded-md bg-slate-950 text-white transition hover:bg-slate-800"
