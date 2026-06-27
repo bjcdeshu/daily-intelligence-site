@@ -516,5 +516,6 @@ function formatGeneratedAt(value: string): string {
   return new Intl.DateTimeFormat("zh-CN", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Asia/Singapore",
   }).format(new Date(value));
 }
