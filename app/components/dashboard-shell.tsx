@@ -31,11 +31,13 @@ type DashboardShellProps = {
   initialSnapshot: DashboardSnapshot;
 };
 
+type IconComponent = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+
 type SectionConfig = {
   id: DashboardSection;
   title: string;
   description: string;
-  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  icon: IconComponent;
 };
 
 const TOPICS_STORAGE_KEY = "daily-intelligence-topics-v1";
@@ -328,7 +330,7 @@ function CountTile({
   label,
   count,
 }: {
-  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  icon: IconComponent;
   label: string;
   count: number;
 }) {
@@ -336,7 +338,7 @@ function CountTile({
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-medium text-slate-600">{label}</span>
-        <Icon className="size-4 text-slate-500" aria-hidden="true" />
+        <Icon className="size-4 text-slate-500" aria-hidden={true} />
       </div>
       <div className="mt-3 text-3xl font-semibold text-slate-950">{count}</div>
     </div>
