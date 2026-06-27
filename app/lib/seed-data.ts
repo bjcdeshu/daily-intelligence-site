@@ -27,7 +27,7 @@ export const seedSources: SourceConfig[] = [
     name: "Anthropic News",
     category: "ai-lab",
     url: "https://www.anthropic.com/news",
-    priority: 5,
+    priority: 4,
   },
   {
     id: "arxiv",
@@ -37,7 +37,7 @@ export const seedSources: SourceConfig[] = [
     priority: 3,
   },
   {
-    id: "github-trending",
+    id: "github",
     name: "GitHub Trending",
     category: "developer",
     url: "https://github.com/trending",
@@ -118,7 +118,7 @@ export function createSeedItems(now = new Date()): NormalizedItem[] {
       status: "updated",
     },
     {
-      id: "anthropic-guidance",
+      id: "anthropic-agent-guidance",
       title: "Anthropic updates guidance for safer agent deployments",
       summary: "New operational guidance focuses on tool permissions, monitoring, and staged autonomy.",
       sourceId: "anthropic",
@@ -147,7 +147,7 @@ export function createSeedItems(now = new Date()): NormalizedItem[] {
       id: "open-source-coding-agent",
       title: "Open-source coding agent climbs developer rankings",
       summary: "A repository for terminal-based code editing agents trends after adding review and test automation.",
-      sourceId: "github-trending",
+      sourceId: "github",
       sourceUrl: "https://github.com/trending/coding-agent",
       publishedAt: isoHoursAgo(70, now),
       updatedAt: isoHoursAgo(64, now),
