@@ -133,4 +133,24 @@ describe("daily intelligence dashboard", () => {
     expect(snapshot.sections.today[0].source.id).toBe("field-report");
     expect(snapshot.sections.watchlist.map((item) => item.id)).toEqual(["unknown-security-watch"]);
   });
+
+  it("does not use topic keywords for watchlist tag matching", () => {
+    const topicKeywordOnlyWatchItem: NormalizedItem = {
+      id: "topic-keyword-policy",
+      title: "Business update mentions regulator talks",
+      summary: "An ordinary business item carries a policy topic keyword.",
+      sourceId: "global-wire",
+      sourceUrl: "https://example.com/business/policy-keyword",
+      publishedAt: "2026-06-27T06:00:00+08:00",
+      updatedAt: "2026-06-27T06:30:00+08:00",
+      tags: ["Business"],
+      topicKeywords: ["policy"],
+      importance: 4,
+      status: "updated",
+    };
+
+    const snapshot = buildDashboardSnapshot([topicKeywordOnlyWatchItem], sources, topics, now);
+
+    expect(snapshot.sections.watchlist.map((item) => item.id)).not.toContain("topic-keyword-policy");
+  });
 });

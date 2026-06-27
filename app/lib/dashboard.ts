@@ -129,7 +129,7 @@ function isWatchItem(item: NormalizedItem): boolean {
     return true;
   }
 
-  return [...item.tags, ...item.topicKeywords].some((tag) =>
+  return item.tags.some((tag) =>
     WATCH_TAGS.has(normalizeText(tag)),
   );
 }
