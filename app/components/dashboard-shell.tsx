@@ -83,7 +83,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
 
   useEffect(() => {
     queueMicrotask(() => {
-      setTopics(safeReadStoredTopics(initialSnapshot.topics));
+      setTopics(mergeTopics(initialSnapshot.topics, safeReadStoredTopics()));
       didLoadStoredTopics.current = true;
     });
   }, [initialSnapshot.topics]);
@@ -93,8 +93,10 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
       return;
     }
 
-    safeWriteStoredTopics(topics);
-  }, [topics]);
+    safeWriteStoredTopics(
+      topics.filter((topic) => !serverTopicIds.has(topic.id)),
+    );
+  }, [serverTopicIds, topics]);
 
   const selectedTopic = useMemo(
     () => topics.find((topic) => topic.id === selectedTopicId),
@@ -278,7 +280,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
                       className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
                       type="button"
                       onClick={() => removeTopic(topic.id)}
-                      aria-label={`Remove ${topic.name}`}
+                      aria-label={`移除 ${topic.name}`}
                     >
                       <X className="size-4" aria-hidden="true" />
                     </button>
@@ -299,7 +301,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
             <button
               className="inline-flex size-10 shrink-0 items-center justify-center rounded-md bg-slate-950 text-white transition hover:bg-slate-800"
               type="submit"
-              aria-label="Add topic"
+              aria-label="添加主题"
             >
               <Plus className="size-4" aria-hidden="true" />
             </button>
@@ -414,9 +416,9 @@ function findEquivalentTopic(name: string, topics: Topic[]): Topic | undefined {
   });
 }
 
-function safeReadStoredTopics(fallbackTopics: Topic[]): Topic[] {
+function safeReadStoredTopics(): Topic[] {
   if (typeof window === "undefined") {
-    return fallbackTopics;
+    return [];
   }
 
   let storedTopics: string | null;
@@ -424,24 +426,24 @@ function safeReadStoredTopics(fallbackTopics: Topic[]): Topic[] {
   try {
     storedTopics = window.localStorage.getItem(TOPICS_STORAGE_KEY);
   } catch {
-    return fallbackTopics;
+    return [];
   }
 
   if (!storedTopics) {
-    return fallbackTopics;
+    return [];
   }
 
   try {
     const parsedTopics = JSON.parse(storedTopics);
 
     if (Array.isArray(parsedTopics)) {
-      return mergeTopics(fallbackTopics, parsedTopics.filter(isTopic));
+      return parsedTopics.filter(isTopic);
     }
   } catch {
     safeRemoveStoredTopics();
   }
 
-  return fallbackTopics;
+  return [];
 }
 
 function safeWriteStoredTopics(topics: Topic[]): void {
