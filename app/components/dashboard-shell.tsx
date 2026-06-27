@@ -76,9 +76,14 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const didLoadStoredTopics = useRef(false);
 
+  const serverTopicIds = useMemo(
+    () => new Set(snapshot.topics.map((topic) => topic.id)),
+    [snapshot.topics],
+  );
+
   useEffect(() => {
     queueMicrotask(() => {
-      setTopics(readStoredTopics(initialSnapshot.topics));
+      setTopics(safeReadStoredTopics(initialSnapshot.topics));
       didLoadStoredTopics.current = true;
     });
   }, [initialSnapshot.topics]);
@@ -88,7 +93,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
       return;
     }
 
-    window.localStorage.setItem(TOPICS_STORAGE_KEY, JSON.stringify(topics));
+    safeWriteStoredTopics(topics);
   }, [topics]);
 
   const selectedTopic = useMemo(
@@ -130,6 +135,14 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
       return;
     }
 
+    const equivalentTopic = findEquivalentTopic(name, topics);
+
+    if (equivalentTopic) {
+      setSelectedTopicId(equivalentTopic.id);
+      setTopicName("");
+      return;
+    }
+
     const id = createTopicId(name, topics);
     setTopics((currentTopics) => [
       ...currentTopics,
@@ -145,6 +158,10 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
   }
 
   function removeTopic(topicId: string) {
+    if (serverTopicIds.has(topicId)) {
+      return;
+    }
+
     setTopics((currentTopics) =>
       currentTopics.filter((topic) => topic.id !== topicId),
     );
@@ -169,7 +186,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
 
       const nextSnapshot = (await response.json()) as DashboardSnapshot;
       setSnapshot(nextSnapshot);
-      setTopics((currentTopics) => mergeTopics(currentTopics, nextSnapshot.topics));
+      setTopics((currentTopics) => mergeTopics(nextSnapshot.topics, currentTopics));
     } catch (error) {
       setRefreshError(
         error instanceof Error ? error.message : "Unable to refresh dashboard.",
@@ -244,25 +261,31 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
               </span>
             </button>
 
-            {topics.map((topic) => (
-              <div key={topic.id} className="flex gap-2">
-                <button
-                  className={topicButtonClass(selectedTopicId === topic.id)}
-                  type="button"
-                  onClick={() => setSelectedTopicId(topic.id)}
-                >
-                  <span className="truncate">{topic.name}</span>
-                </button>
-                <button
-                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-                  type="button"
-                  onClick={() => removeTopic(topic.id)}
-                  aria-label={`Remove ${topic.name}`}
-                >
-                  <X className="size-4" aria-hidden="true" />
-                </button>
-              </div>
-            ))}
+            {topics.map((topic) => {
+              const isServerTopic = serverTopicIds.has(topic.id);
+
+              return (
+                <div key={topic.id} className="flex gap-2">
+                  <button
+                    className={topicButtonClass(selectedTopicId === topic.id)}
+                    type="button"
+                    onClick={() => setSelectedTopicId(topic.id)}
+                  >
+                    <span className="truncate">{topic.name}</span>
+                  </button>
+                  {!isServerTopic ? (
+                    <button
+                      className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                      type="button"
+                      onClick={() => removeTopic(topic.id)}
+                      aria-label={`Remove ${topic.name}`}
+                    >
+                      <X className="size-4" aria-hidden="true" />
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
 
           <form className="mt-4 flex gap-2" onSubmit={addTopic}>
@@ -270,6 +293,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
               className="h-10 min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-slate-400"
               value={topicName}
               onChange={(event) => setTopicName(event.target.value)}
+              aria-label="添加关注主题"
               placeholder="添加主题"
             />
             <button
@@ -361,7 +385,12 @@ function mergeTopics(primaryTopics: Topic[], secondaryTopics: Topic[]): Topic[] 
   const topicMap = new Map(primaryTopics.map((topic) => [topic.id, topic]));
 
   for (const topic of secondaryTopics) {
-    if (!topicMap.has(topic.id)) {
+    const hasEquivalentTopic = findEquivalentTopic(
+      topic.name,
+      Array.from(topicMap.values()),
+    );
+
+    if (!topicMap.has(topic.id) && !hasEquivalentTopic) {
       topicMap.set(topic.id, topic);
     }
   }
@@ -369,12 +398,34 @@ function mergeTopics(primaryTopics: Topic[], secondaryTopics: Topic[]): Topic[] 
   return Array.from(topicMap.values());
 }
 
-function readStoredTopics(fallbackTopics: Topic[]): Topic[] {
+function findEquivalentTopic(name: string, topics: Topic[]): Topic | undefined {
+  const normalizedName = normalizeText(name);
+
+  if (!normalizedName) {
+    return undefined;
+  }
+
+  return topics.find((topic) => {
+    const normalizedTopicValues = [topic.name, ...topic.keywords]
+      .map(normalizeText)
+      .filter(Boolean);
+
+    return normalizedTopicValues.includes(normalizedName);
+  });
+}
+
+function safeReadStoredTopics(fallbackTopics: Topic[]): Topic[] {
   if (typeof window === "undefined") {
     return fallbackTopics;
   }
 
-  const storedTopics = window.localStorage.getItem(TOPICS_STORAGE_KEY);
+  let storedTopics: string | null;
+
+  try {
+    storedTopics = window.localStorage.getItem(TOPICS_STORAGE_KEY);
+  } catch {
+    return fallbackTopics;
+  }
 
   if (!storedTopics) {
     return fallbackTopics;
@@ -384,13 +435,53 @@ function readStoredTopics(fallbackTopics: Topic[]): Topic[] {
     const parsedTopics = JSON.parse(storedTopics);
 
     if (Array.isArray(parsedTopics)) {
-      return mergeTopics(fallbackTopics, parsedTopics);
+      return mergeTopics(fallbackTopics, parsedTopics.filter(isTopic));
     }
   } catch {
-    window.localStorage.removeItem(TOPICS_STORAGE_KEY);
+    safeRemoveStoredTopics();
   }
 
   return fallbackTopics;
+}
+
+function safeWriteStoredTopics(topics: Topic[]): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(TOPICS_STORAGE_KEY, JSON.stringify(topics));
+  } catch {
+    return;
+  }
+}
+
+function safeRemoveStoredTopics(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(TOPICS_STORAGE_KEY);
+  } catch {
+    return;
+  }
+}
+
+function isTopic(value: unknown): value is Topic {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const topic = value as Partial<Topic>;
+
+  return (
+    typeof topic.id === "string" &&
+    typeof topic.name === "string" &&
+    Array.isArray(topic.keywords) &&
+    topic.keywords.every((keyword) => typeof keyword === "string") &&
+    typeof topic.enabled === "boolean"
+  );
 }
 
 function createTopicId(name: string, topics: Topic[]): string {
