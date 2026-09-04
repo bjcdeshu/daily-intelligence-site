@@ -1,97 +1,90 @@
-# vinext-starter
+# Daily Intelligence
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+一个用于快速回答四个问题的中文信息仪表盘原型：**什么仍在发展、今天发生了什么、这周形成了什么脉络、接下来应该盯什么。**
 
-## Prerequisites
+[在线体验](https://daily-intelligence-20260627.bjcdeshu-4072.chatgpt.site/)
 
-- Node.js `>=22.13.0`
+> **当前状态：v0.1 产品原型。** 仪表盘、分类逻辑、主题筛选和刷新路径已经可运行；页面当前使用可重复生成的示例数据，并不是实时新闻源。
 
-## Quick Start
+## 已实现
+
+- 将条目组织为 **正在进行中、今天发生、这周发生、需要关注** 四个视图。
+- 按重要性和最新活动时间排序，同一条目可同时进入多个相关视图。
+- 通过标题、摘要、标签和关键词匹配关注主题。
+- 支持添加、删除和筛选自定义主题；自定义主题保存在当前浏览器的 `localStorage` 中。
+- 提供 `/api/dashboard` 刷新端点，并在刷新失败时保留当前界面和显示错误状态。
+- 使用统一的 `NormalizedItem`、`SourceConfig` 和 `DashboardSnapshot` 数据边界，方便之后替换为真实 RSS/API 适配器。
+- 按 UTC+8 切分“今天”和过去 7 天的数据窗口。
+
+## 当前数据边界
+
+仓库里的 Reuters、OpenAI、Anthropic、arXiv 等条目是用于验证产品形态的**示例数据**。标题、摘要和链接不应被当作真实资讯或事实来源。
+
+当前版本尚未包含：
+
+- 实时 RSS/API 抓取；
+- 定时采集与持久化快照；
+- 历史搜索；
+- 多用户同步；
+- 通知或日报投递。
+
+下一步真正有价值的工作不是继续加界面，而是接入一组可验证的真实来源，并让刷新与历史状态可持续运行。
+
+## 数据流
+
+```text
+示例数据 / 未来的来源适配器
+            ↓
+       NormalizedItem
+            ↓
+  buildDashboardSnapshot()
+            ↓
+  分类 · 排序 · 主题匹配
+            ↓
+   Server Render + /api/dashboard
+            ↓
+      浏览器主题筛选
+```
+
+## 本地运行
+
+需要 Node.js `>=22.13.0`。
 
 ```bash
 npm install
 npm run dev
+```
+
+然后打开终端输出的本地地址。
+
+## 验证
+
+```bash
+npm test
 npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+测试覆盖主题匹配、四类视图归组、排序、未知来源回退和关注列表规则；生产构建由 `vinext build` 完成。
 
-## Included Shape
+## 技术栈
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+- [vinext](https://github.com/cloudflare/vinext)
+- Next.js 16 / React 19
+- TypeScript
+- Tailwind CSS 4
+- Vitest
+- Cloudflare Worker-compatible runtime
 
-## Workspace Auth Headers
+## 主要目录
 
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```text
+app/
+├── api/dashboard/       # 动态仪表盘 JSON
+├── components/          # 仪表盘和信息卡片
+└── lib/
+    ├── dashboard.ts     # 分类、排序与主题匹配
+    ├── seed-data.ts     # 当前示例来源与条目
+    └── types.ts         # 共享数据结构
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+产品目标与第一版边界见 [`docs/superpowers/specs/2026-06-27-daily-intelligence-site-design.md`](docs/superpowers/specs/2026-06-27-daily-intelligence-site-design.md)。
