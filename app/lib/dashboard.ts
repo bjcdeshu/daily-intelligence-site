@@ -45,6 +45,7 @@ export function buildDashboardSnapshot(
   sources: SourceConfig[],
   topics: Topic[],
   now = new Date(),
+  dataMode: DashboardSnapshot["dataMode"] = "demo",
 ): DashboardSnapshot {
   const sourceById = new Map(sources.map((source) => [source.id, source]));
   const todayStart = getSingaporeDayStart(now);
@@ -97,11 +98,12 @@ export function buildDashboardSnapshot(
 
   return {
     generatedAt: now.toISOString(),
+    dataMode,
     sources,
     topics,
     sections,
     counts,
-    brief: `${counts.ongoing} ongoing, ${counts.today} today, ${counts.week} this week, ${counts.watchlist} on watchlist`,
+    brief: `${counts.ongoing} 条持续追踪 · ${counts.today} 条今日动态 · ${counts.week} 条近 7 天资讯 · ${counts.watchlist} 条需要关注`,
   };
 }
 
