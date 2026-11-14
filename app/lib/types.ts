@@ -47,6 +47,7 @@ export type DashboardItem = NormalizedItem & {
 
 export type DashboardSnapshot = {
   generatedAt: string;
+  dataMode: "demo" | "live";
   sources: SourceConfig[];
   topics: Topic[];
   sections: Record<DashboardSection, DashboardItem[]>;
