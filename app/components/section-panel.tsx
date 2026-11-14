@@ -5,9 +5,10 @@ type SectionPanelProps = {
   title: string;
   description: string;
   items: DashboardItem[];
+  isDemo: boolean;
 };
 
-export function SectionPanel({ title, description, items }: SectionPanelProps) {
+export function SectionPanel({ title, description, items, isDemo }: SectionPanelProps) {
   return (
     <section className="min-w-0">
       <div className="mb-4 flex items-start justify-between gap-4 border-b border-slate-200 pb-3">
@@ -23,12 +24,12 @@ export function SectionPanel({ title, description, items }: SectionPanelProps) {
       {items.length > 0 ? (
         <div className="grid gap-3">
           {items.map((item) => (
-            <InsightCard key={item.id} item={item} />
+            <InsightCard key={item.id} item={item} isDemo={isDemo} />
           ))}
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">
-          No matching items in this view.
+          当前没有符合条件的条目。
         </div>
       )}
     </section>

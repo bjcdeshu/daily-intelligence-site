@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Clock3,
   Eye,
+  Info,
   ListFilter,
   Plus,
   Radio,
@@ -20,6 +21,7 @@ import {
   type FormEvent,
 } from "react";
 import { SectionPanel } from "@/app/components/section-panel";
+import { getMatchedTopicIds } from "@/app/lib/dashboard";
 import type {
   DashboardItem,
   DashboardSection,
@@ -57,8 +59,8 @@ const sectionConfigs: SectionConfig[] = [
   },
   {
     id: "week",
-    title: "这周发生",
-    description: "过去 7 天里形成脉络的重点变化。",
+    title: "近 7 天",
+    description: "过去 7 天内发布或更新的资讯（滚动窗口）。",
     icon: Clock3,
   },
   {
@@ -119,6 +121,14 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
       ]),
     ) as DashboardSnapshot["sections"];
   }, [selectedTopic, selectedTopicId, snapshot.sections]);
+
+  const totalUniqueItems = useMemo(
+    () =>
+      new Set(
+        Object.values(snapshot.sections).flatMap((items) => items.map((item) => item.id)),
+      ).size,
+    [snapshot.sections],
+  );
 
   const visibleCounts = useMemo(
     () =>
@@ -185,7 +195,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
       });
 
       if (!response.ok) {
-        throw new Error(`Refresh failed with ${response.status}`);
+        throw new Error(`获取数据失败（HTTP ${response.status}）`);
       }
 
       const nextSnapshot = (await response.json()) as DashboardSnapshot;
@@ -193,7 +203,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
       setTopics((currentTopics) => mergeTopics(nextSnapshot.topics, currentTopics));
     } catch (error) {
       setRefreshError(
-        error instanceof Error ? error.message : "Unable to refresh dashboard.",
+        error instanceof Error ? error.message : "获取数据失败，请稍后重试。",
       );
     } finally {
       setIsRefreshing(false);
@@ -205,7 +215,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
       <header className="flex flex-col gap-4 border-b border-slate-200 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
           <p className="text-sm font-medium text-slate-500">
-            {formatGeneratedAt(snapshot.generatedAt)}
+            {snapshot.dataMode === "demo" ? "示例生成于 " : "数据更新于 "}{formatGeneratedAt(snapshot.generatedAt)} · UTC+8
           </p>
           <h1 className="mt-2 text-3xl font-semibold tracking-normal text-slate-950">
             现在发生了什么
@@ -215,7 +225,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
           </p>
         </div>
         <button
-          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-32"
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-32"
           type="button"
           onClick={refreshDashboard}
           disabled={isRefreshing}
@@ -224,12 +234,19 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
             className={`size-4 ${isRefreshing ? "animate-spin" : ""}`}
             aria-hidden="true"
           />
-          刷新
+          {isRefreshing ? "处理中…" : snapshot.dataMode === "demo" ? "重新生成示例" : "刷新资讯"}
         </button>
       </header>
 
+      {snapshot.dataMode === "demo" ? (
+        <div role="note" aria-label="数据说明" className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+          <Info className="mt-1 size-4 shrink-0" aria-hidden="true" />
+          <p><strong>演示模式 · 非实时新闻。</strong> 当前条目均为模拟数据，来源和链接仅作界面演示，不代表真实报道。页面时间随生成而变化，点击上方按钮也不会抓取新资讯。</p>
+        </div>
+      ) : null}
+
       {refreshError ? (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div role="alert" className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
           <span>{refreshError}</span>
         </div>
@@ -261,7 +278,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
             >
               <span className="truncate">全部</span>
               <span className="inline-flex h-6 min-w-8 items-center justify-center rounded-md bg-slate-100 px-2 text-xs font-semibold text-slate-600">
-                {sumCounts(visibleCounts)}
+                {totalUniqueItems}
               </span>
             </button>
 
@@ -299,6 +316,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
               onChange={(event) => setTopicName(event.target.value)}
               aria-label="添加关注主题"
               placeholder="添加主题"
+              maxLength={48}
             />
             <button
               className="inline-flex size-10 shrink-0 items-center justify-center rounded-md bg-slate-950 text-white transition hover:bg-slate-800"
@@ -317,6 +335,7 @@ export function DashboardShell({ initialSnapshot }: DashboardShellProps) {
               title={section.title}
               description={section.description}
               items={visibleSections[section.id]}
+              isDemo={snapshot.dataMode === "demo"}
             />
           ))}
         </div>
@@ -355,30 +374,7 @@ function topicButtonClass(isSelected: boolean): string {
 }
 
 function itemMatchesTopic(item: DashboardItem, topic: Topic): boolean {
-  if (item.matchedTopicIds.some((id) => includesNormalized(id, topic.id))) {
-    return true;
-  }
-
-  const searchableText = [
-    item.title,
-    item.summary,
-    ...item.tags,
-    ...item.topicKeywords,
-    ...item.matchedTopicIds,
-  ]
-    .map(normalizeText)
-    .join(" ");
-
-  return topic.keywords
-    .map(normalizeText)
-    .filter(Boolean)
-    .some((keyword) => searchableText.includes(keyword));
-}
-
-function includesNormalized(value: string, query: string): boolean {
-  const normalizedQuery = normalizeText(query);
-
-  return Boolean(normalizedQuery) && normalizeText(value).includes(normalizedQuery);
+  return getMatchedTopicIds(item, [topic]).includes(topic.id);
 }
 
 function normalizeText(value: string): string {
@@ -506,10 +502,6 @@ function createTopicId(name: string, topics: Topic[]): string {
   }
 
   return id;
-}
-
-function sumCounts(counts: DashboardSnapshot["counts"]): number {
-  return counts.ongoing + counts.today + counts.week + counts.watchlist;
 }
 
 function formatGeneratedAt(value: string): string {

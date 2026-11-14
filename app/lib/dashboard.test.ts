@@ -109,8 +109,14 @@ describe("daily intelligence dashboard", () => {
     expect(snapshot.counts).toEqual({ ongoing: 1, today: 3, week: 1, watchlist: 3 });
     expect(snapshot.sources).toEqual(sources);
     expect(snapshot.topics).toEqual(topics);
-    expect(snapshot.brief).toContain("1 ongoing");
-    expect(snapshot.brief).toContain("3 today");
+    expect(snapshot.dataMode).toBe("demo");
+    expect(snapshot.brief).toContain("1 条持续追踪");
+    expect(snapshot.brief).toContain("3 条今日动态");
+  });
+
+  it("allows future real-source snapshots to be marked live", () => {
+    const snapshot = buildDashboardSnapshot(items, sources, topics, now, "live");
+    expect(snapshot.dataMode).toBe("live");
   });
 
   it("preserves unknown source ids and matches trimmed watch tags", () => {
